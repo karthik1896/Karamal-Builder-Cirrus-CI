@@ -54,22 +54,12 @@ cd ../
 else
 git clone --depth=1 https://github.com/navin136/android_kernel_asus_X00TD $WORK_DIR/kernel
 fi
-if [ -d $WORK_DIR/toolchains/gcc64 ] && [ -d $WORK_DIR/toolchains/gcc32 ]
+if [ -d $WORK_DIR/toolchains/evagcc64 ] && [ -d $WORK_DIR/toolchains/evagcc32 ]
 then
 echo "gcc dir exists"
 else
-git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 -b android12-release $WORK_DIR/toolchains/gcc64
-git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 -b android12-release $WORK_DIR/toolchains/gcc32
-fi
-if [ -d $WORK_DIR/toolchains/clang ]
-then
-echo "clang dir exists"
-else
-cd $WORK_DIR/toolchains
-mkdir clang
-cd clang
-wget https://hitarashi.sayeed205.workers.dev/0:/clang-r416183b1.tar.gz
-tar -xvzf clang-r416183b1.tar.gz
+git clone --depth=1 https://github.com/mvaisakh/gcc-arm64 $WORK_DIR/toolchains/evagcc64
+git clone --depth=1 https://github.com/mvaisakh/gcc-arm $WORK_DIR/toolchains/evagcc32
 fi
 cd $WORK_DIR/kernel
 
@@ -81,22 +71,25 @@ DISTRO=$(source /etc/os-release && echo $NAME)
 CORES=$(nproc --all)
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 COMMIT_LOG=$(git log --oneline -n 1)
-COMPILER=$($WORK_DIR/toolchains/clang/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
+COMPILER=$($WORK_DIR/toolchains/evagcc64/bin/aarch64-elf-gcc --version | cut -b 16-30)
 
 #Starting Compilation
 msg "<b>========VELOCITY Kernel========</b>%0A<b>Hey Navin!! Kernel Build Triggered !!</b>%0A<b>Device: </b><code>$DEVICE</code>%0A<b>Kernel Version: </b><code>$VERSION</code>%0A<b>Date: </b><code>$DATE</code>%0A<b>Host Distro: </b><code>$DISTRO</code>%0A<b>Host Core Count: </b><code>$CORES</code>%0A<b>Compiler Used: </b><code>$COMPILER</code>%0A<b>Branch: </b><code>$BRANCH</code>%0A<b>Last Commit: </b><code>$COMMIT_LOG</code>%0A<b>Build Coming !! Stay Online Bruh</b>"
 BUILD_START=$(date +"%s")
 export ARCH=arm64
 export SUBARCH=arm64
-export PATH="$WORK_DIR/toolchains/gcc64/bin/:$WORK_DIR/toolchains/gcc32/bin/:$WORK_DIR/toolchains/clang/bin/:$PATH"
+export PATH="$WORK_DIR/toolchains/evagcc64/bin/:$WORK_DIR/toolchains/evagcc32/bin/:$PATH"
 cd $WORK_DIR/kernel
 make clean && make mrproper
 make O=out X00TD_defconfig
 make -j$(nproc --all) O=out \
-      CLANG_TRIPLE=aarch64-linux-gnu- \
-      CROSS_COMPILE=aarch64-linux-android- \
-      CROSS_COMPILE_ARM32=arm-linux-androideabi- \
-      CC=clang | tee log.txt
+        CROSS_COMPILE_ARM32=arm-eabi- \
+	CROSS_COMPILE=aarch64-elf- \
+	AR=aarch64-elf-ar \
+	OBJDUMP=aarch64-elf-objdump \
+	STRIP=aarch64-elf-strip  \
+	LD="ld.lld"
+
 
 #Zipping Into Flashable Zip
 if [ -f out/arch/arm64/boot/Image.gz-dtb ]
