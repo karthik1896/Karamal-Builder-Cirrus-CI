@@ -91,7 +91,7 @@ export SUBARCH=arm64
 export PATH="$WORK_DIR/toolchains/gcc64/bin/:$WORK_DIR/toolchains/gcc32/bin/:$WORK_DIR/toolchains/clang/bin/:$PATH"
 cd $WORK_DIR/kernel
 make clean && make mrproper
-make O=out X00TD_defconfig
+make O=out X00T_defconfig
 make -j$(nproc --all) O=out \
       CLANG_TRIPLE=aarch64-linux-gnu- \
       CROSS_COMPILE=aarch64-linux-android- \
